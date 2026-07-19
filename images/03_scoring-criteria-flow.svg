@@ -1,0 +1,383 @@
+<svg viewBox="0 0 1600 2460" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">已有岗位 JD 生成评分标准完整前后端流程</title>
+  <desc id="desc">完整展示基于已有岗位 JD 生成评分标准时，前端页面、前端 API、后端接口、后端服务、Dify 与远程 HR 服务之间的交互流程。</desc>
+  <defs>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#e5e7eb" stroke-width="0.65"/>
+    </pattern>
+    <marker id="arrow-blue" markerWidth="11" markerHeight="8" refX="10" refY="4" orient="auto">
+      <polygon points="0 0, 11 4, 0 8" fill="#2563eb"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="11" markerHeight="8" refX="10" refY="4" orient="auto">
+      <polygon points="0 0, 11 4, 0 8" fill="#059669"/>
+    </marker>
+    <marker id="arrow-gray" markerWidth="11" markerHeight="8" refX="10" refY="4" orient="auto">
+      <polygon points="0 0, 11 4, 0 8" fill="#64748b"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="11" markerHeight="8" refX="10" refY="4" orient="auto">
+      <polygon points="0 0, 11 4, 0 8" fill="#d97706"/>
+    </marker>
+    <marker id="arrow-red" markerWidth="11" markerHeight="8" refX="10" refY="4" orient="auto">
+      <polygon points="0 0, 11 4, 0 8" fill="#dc2626"/>
+    </marker>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap');
+      text {
+        font-family: 'JetBrains Mono', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        fill: #0f172a;
+      }
+      .title { font-size: 27px; font-weight: 700; }
+      .subtitle { font-size: 13px; fill: #475569; }
+      .lane-title { font-size: 14px; font-weight: 700; }
+      .lane-subtitle { font-size: 10px; fill: #64748b; }
+      .phase { font-size: 12px; font-weight: 700; fill: #334155; }
+      .box-title { font-size: 13px; font-weight: 700; }
+      .box-sub { font-size: 10px; fill: #475569; }
+      .box-path { font-size: 9px; fill: #64748b; }
+      .arrow-label { font-size: 9px; font-weight: 600; fill: #334155; }
+      .note-title { font-size: 12px; font-weight: 700; }
+      .note-text { font-size: 10px; fill: #475569; }
+      .num { font-size: 10px; font-weight: 700; fill: #ffffff; }
+      .step-circle { fill: #2563eb; stroke: #ffffff; stroke-width: 2; }
+      .box-user { fill: #ffffff; stroke: #94a3b8; stroke-width: 1.5; }
+      .box-api { fill: #ffffff; stroke: #60a5fa; stroke-width: 1.5; }
+      .box-backend { fill: #ffffff; stroke: #22c55e; stroke-width: 1.5; }
+      .box-ext { fill: #ffffff; stroke: #f59e0b; stroke-width: 1.5; }
+      .flow { fill: none; stroke: #2563eb; stroke-width: 2.2; marker-end: url(#arrow-blue); }
+      .save-flow { fill: none; stroke: #059669; stroke-width: 2.2; marker-end: url(#arrow-green); }
+      .return-flow { fill: none; stroke: #64748b; stroke-width: 2; stroke-dasharray: 7 5; marker-end: url(#arrow-gray); }
+      .branch-flow { fill: none; stroke: #d97706; stroke-width: 2; marker-end: url(#arrow-orange); }
+      .warn-flow { fill: none; stroke: #dc2626; stroke-width: 2; stroke-dasharray: 7 5; marker-end: url(#arrow-red); }
+    </style>
+  </defs>
+
+  <rect width="1600" height="2460" fill="#ffffff"/>
+  <rect width="1600" height="2460" fill="url(#grid)" opacity="0.5"/>
+
+  <text x="60" y="56" class="title">已有岗位 JD 生成评分标准完整前后端流程</text>
+  <text x="60" y="84" class="subtitle">白色主题；按“加载已有 JD → 检查历史评分标准 → Dify 生成 → 流式接收 → 新增/更新保存 → 返回 ID”完整展开。</text>
+
+  <rect x="40" y="120" width="360" height="2200" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+  <rect x="420" y="120" width="360" height="2200" rx="16" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <rect x="800" y="120" width="360" height="2200" rx="16" fill="#ecfdf5" stroke="#bbf7d0" stroke-width="1.5"/>
+  <rect x="1180" y="120" width="360" height="2200" rx="16" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.5"/>
+
+  <text x="64" y="151" class="lane-title">用户 / 前端页面</text>
+  <text x="64" y="171" class="lane-subtitle">frontend/src/views/recruitment/JDGenerator.vue</text>
+  <text x="444" y="151" class="lane-title">前端 API 封装</text>
+  <text x="444" y="171" class="lane-subtitle">frontend/src/api/*.js</text>
+  <text x="824" y="151" class="lane-title">后端 API / Service</text>
+  <text x="824" y="171" class="lane-subtitle">backend/app/api/v1/endpoints + services</text>
+  <text x="1204" y="151" class="lane-title">外部服务</text>
+  <text x="1204" y="171" class="lane-subtitle">Dify 工作流 / 远程 HR 服务</text>
+
+  <text x="64" y="218" class="phase">阶段 1：打开已有 JD，并加载当前 JD 的历史评分标准</text>
+
+  <!-- Phase 1 -->
+  <g id="s1">
+    <rect x="75" y="245" width="290" height="92" rx="10" class="box-user"/>
+    <circle cx="99" cy="268" r="13" class="step-circle"/><text x="99" y="272" class="num" text-anchor="middle">1</text>
+    <text x="220" y="270" class="box-title" text-anchor="middle">选择一个已有岗位 JD</text>
+    <text x="220" y="292" class="box-sub" text-anchor="middle">selectJD(jd)</text>
+    <text x="220" y="312" class="box-path" text-anchor="middle">JDGenerator.vue:713</text>
+  </g>
+
+  <g id="s2">
+    <rect x="455" y="245" width="290" height="92" rx="10" class="box-api"/>
+    <circle cx="479" cy="268" r="13" class="step-circle"/><text x="479" y="272" class="num" text-anchor="middle">2</text>
+    <text x="600" y="270" class="box-title" text-anchor="middle">读取 JD 详情</text>
+    <text x="600" y="292" class="box-sub" text-anchor="middle">jobDescriptionApi.getJDDetail(id)</text>
+    <text x="600" y="312" class="box-path" text-anchor="middle">GET /job-descriptions/{id}</text>
+  </g>
+
+  <g id="s3">
+    <rect x="75" y="385" width="290" height="96" rx="10" class="box-user"/>
+    <circle cx="99" cy="408" r="13" class="step-circle"/><text x="99" y="412" class="num" text-anchor="middle">3</text>
+    <text x="220" y="409" class="box-title" text-anchor="middle">把 JD 写入页面状态</text>
+    <text x="220" y="431" class="box-sub" text-anchor="middle">generatedJD / streamContent</text>
+    <text x="220" y="449" class="box-sub" text-anchor="middle">savedJDId = jd.id</text>
+    <text x="220" y="467" class="box-path" text-anchor="middle">selectJD() 内部赋值</text>
+  </g>
+
+  <g id="s4">
+    <rect x="75" y="530" width="290" height="96" rx="10" class="box-user"/>
+    <circle cx="99" cy="553" r="13" class="step-circle"/><text x="99" y="557" class="num" text-anchor="middle">4</text>
+    <text x="220" y="554" class="box-title" text-anchor="middle">加载该 JD 的评分标准</text>
+    <text x="220" y="576" class="box-sub" text-anchor="middle">loadScoringCriteria(jd.id)</text>
+    <text x="220" y="596" class="box-path" text-anchor="middle">JDGenerator.vue:1541</text>
+  </g>
+
+  <g id="s5">
+    <rect x="455" y="530" width="290" height="96" rx="10" class="box-api"/>
+    <circle cx="479" cy="553" r="13" class="step-circle"/><text x="479" y="557" class="num" text-anchor="middle">5</text>
+    <text x="600" y="554" class="box-title" text-anchor="middle">按 JD ID 查询评分标准</text>
+    <text x="600" y="576" class="box-sub" text-anchor="middle">getScoringCriteriaByJD(jdId)</text>
+    <text x="600" y="594" class="box-sub" text-anchor="middle">GET /scoring-criteria/</text>
+    <text x="600" y="612" class="box-path" text-anchor="middle">scoringCriteria.js:26</text>
+  </g>
+
+  <g id="s6">
+    <rect x="835" y="530" width="290" height="96" rx="10" class="box-backend"/>
+    <circle cx="859" cy="553" r="13" class="step-circle"/><text x="859" y="557" class="num" text-anchor="middle">6</text>
+    <text x="980" y="554" class="box-title" text-anchor="middle">查询评分标准列表接口</text>
+    <text x="980" y="576" class="box-sub" text-anchor="middle">get_scoring_criteria_list()</text>
+    <text x="980" y="594" class="box-sub" text-anchor="middle">job_description_id 查询参数</text>
+    <text x="980" y="612" class="box-path" text-anchor="middle">scoring_criteria.py:102</text>
+  </g>
+
+  <g id="s7">
+    <rect x="835" y="675" width="290" height="96" rx="10" class="box-backend"/>
+    <circle cx="859" cy="698" r="13" class="step-circle"/><text x="859" y="702" class="num" text-anchor="middle">7</text>
+    <text x="980" y="699" class="box-title" text-anchor="middle">服务层转发查询</text>
+    <text x="980" y="721" class="box-sub" text-anchor="middle">ScoringCriteriaService</text>
+    <text x="980" y="739" class="box-sub" text-anchor="middle">get_scoring_criteria_list()</text>
+    <text x="980" y="757" class="box-path" text-anchor="middle">scoring_criteria_service.py:120</text>
+  </g>
+
+  <g id="s8">
+    <rect x="1215" y="675" width="290" height="96" rx="10" class="box-ext"/>
+    <circle cx="1239" cy="698" r="13" class="step-circle"/><text x="1239" y="702" class="num" text-anchor="middle">8</text>
+    <text x="1360" y="699" class="box-title" text-anchor="middle">远程 HR 服务查询</text>
+    <text x="1360" y="721" class="box-sub" text-anchor="middle">remote_service_client.get()</text>
+    <text x="1360" y="739" class="box-sub" text-anchor="middle">endpoint="/scoring-criteria/"</text>
+    <text x="1360" y="757" class="box-path" text-anchor="middle">HR_SERVICE_HOST:PORT</text>
+  </g>
+
+  <g id="d1" transform="translate(220 845)">
+    <polygon points="0,-64 92,0 0,64 -92,0" fill="#ffffff" stroke="#f59e0b" stroke-width="1.8"/>
+    <text y="-10" class="box-title" text-anchor="middle">查询结果</text>
+    <text y="10" class="box-title" text-anchor="middle">items 有值?</text>
+  </g>
+
+  <g id="s9">
+    <rect x="75" y="965" width="290" height="92" rx="10" class="box-user"/>
+    <circle cx="99" cy="988" r="13" class="step-circle"/><text x="99" y="992" class="num" text-anchor="middle">9A</text>
+    <text x="220" y="990" class="box-title" text-anchor="middle">已有评分标准</text>
+    <text x="220" y="1012" class="box-sub" text-anchor="middle">取 latestCriteria</text>
+    <text x="220" y="1030" class="box-sub" text-anchor="middle">savedScoringId = id</text>
+  </g>
+
+  <g id="s10">
+    <rect x="455" y="965" width="290" height="92" rx="10" class="box-api"/>
+    <circle cx="479" cy="988" r="13" class="step-circle"/><text x="479" y="992" class="num" text-anchor="middle">9B</text>
+    <text x="600" y="990" class="box-title" text-anchor="middle">没有评分标准</text>
+    <text x="600" y="1012" class="box-sub" text-anchor="middle">清空评分内容</text>
+    <text x="600" y="1030" class="box-sub" text-anchor="middle">savedScoringId = null</text>
+  </g>
+
+  <text x="64" y="1125" class="phase">阶段 2：基于已有 JD 内容调用 Dify 生成评分标准</text>
+
+  <g id="s11">
+    <rect x="75" y="1150" width="290" height="92" rx="10" class="box-user"/>
+    <circle cx="99" cy="1173" r="13" class="step-circle"/><text x="99" y="1177" class="num" text-anchor="middle">10</text>
+    <text x="220" y="1175" class="box-title" text-anchor="middle">点击生成评分标准</text>
+    <text x="220" y="1197" class="box-sub" text-anchor="middle">generateScoringCriteria()</text>
+    <text x="220" y="1216" class="box-path" text-anchor="middle">JDGenerator.vue:1337</text>
+  </g>
+
+  <g id="d2" transform="translate(220 1330)">
+    <polygon points="0,-64 92,0 0,64 -92,0" fill="#ffffff" stroke="#f59e0b" stroke-width="1.8"/>
+    <text y="-10" class="box-title" text-anchor="middle">页面已有</text>
+    <text y="10" class="box-title" text-anchor="middle">JD 内容?</text>
+  </g>
+
+  <g id="stop1">
+    <rect x="455" y="1285" width="290" height="90" rx="10" fill="#ffffff" stroke="#ef4444" stroke-width="1.5"/>
+    <text x="600" y="1315" class="box-title" text-anchor="middle">无 JD 内容则停止</text>
+    <text x="600" y="1337" class="box-sub" text-anchor="middle">ElMessage.warning</text>
+    <text x="600" y="1355" class="box-sub" text-anchor="middle">“请先生成JD内容”</text>
+  </g>
+
+  <g id="s12">
+    <rect x="75" y="1445" width="290" height="100" rx="10" class="box-user"/>
+    <circle cx="99" cy="1468" r="13" class="step-circle"/><text x="99" y="1472" class="num" text-anchor="middle">11</text>
+    <text x="220" y="1469" class="box-title" text-anchor="middle">生成前重新校准状态</text>
+    <text x="220" y="1491" class="box-sub" text-anchor="middle">已有 savedJDId 时再次</text>
+    <text x="220" y="1509" class="box-sub" text-anchor="middle">loadScoringCriteria(savedJDId)</text>
+    <text x="220" y="1528" class="box-path" text-anchor="middle">JDGenerator.vue:1359</text>
+  </g>
+
+  <g id="s13">
+    <rect x="455" y="1445" width="290" height="100" rx="10" class="box-api"/>
+    <circle cx="479" cy="1468" r="13" class="step-circle"/><text x="479" y="1472" class="num" text-anchor="middle">12</text>
+    <text x="600" y="1469" class="box-title" text-anchor="middle">调用生成接口</text>
+    <text x="600" y="1491" class="box-sub" text-anchor="middle">hrWorkflowsApi</text>
+    <text x="600" y="1509" class="box-sub" text-anchor="middle">generateScoringCriteria()</text>
+    <text x="600" y="1528" class="box-path" text-anchor="middle">hrWorkflows.js:161</text>
+  </g>
+
+  <g id="s14">
+    <rect x="835" y="1445" width="290" height="100" rx="10" class="box-backend"/>
+    <circle cx="859" cy="1468" r="13" class="step-circle"/><text x="859" y="1472" class="num" text-anchor="middle">13</text>
+    <text x="980" y="1469" class="box-title" text-anchor="middle">后端生成接口</text>
+    <text x="980" y="1491" class="box-sub" text-anchor="middle">POST /api/v1/hr-workflows/</text>
+    <text x="980" y="1509" class="box-sub" text-anchor="middle">generate-scoring-criteria</text>
+    <text x="980" y="1528" class="box-path" text-anchor="middle">hr_workflows.py:233</text>
+  </g>
+
+  <g id="s15">
+    <rect x="835" y="1600" width="290" height="104" rx="10" class="box-backend"/>
+    <circle cx="859" cy="1623" r="13" class="step-circle"/><text x="859" y="1627" class="num" text-anchor="middle">14</text>
+    <text x="980" y="1624" class="box-title" text-anchor="middle">构建 query 并调用 Dify</text>
+    <text x="980" y="1646" class="box-sub" text-anchor="middle">DifyService.call_workflow_stream()</text>
+    <text x="980" y="1664" class="box-sub" text-anchor="middle">workflow_type = 2</text>
+    <text x="980" y="1683" class="box-path" text-anchor="middle">services/dify_service.py:25</text>
+  </g>
+
+  <g id="s16">
+    <rect x="1215" y="1600" width="290" height="104" rx="10" class="box-ext"/>
+    <circle cx="1239" cy="1623" r="13" class="step-circle"/><text x="1239" y="1627" class="num" text-anchor="middle">15</text>
+    <text x="1360" y="1624" class="box-title" text-anchor="middle">Dify 评分标准工作流</text>
+    <text x="1360" y="1646" class="box-sub" text-anchor="middle">基于 jd_content 生成</text>
+    <text x="1360" y="1664" class="box-sub" text-anchor="middle">技能/经验/教育/项目维度</text>
+    <text x="1360" y="1683" class="box-path" text-anchor="middle">流式返回 chunk</text>
+  </g>
+
+  <g id="s17">
+    <rect x="75" y="1765" width="290" height="104" rx="10" class="box-user"/>
+    <circle cx="99" cy="1788" r="13" class="step-circle"/><text x="99" y="1792" class="num" text-anchor="middle">16</text>
+    <text x="220" y="1789" class="box-title" text-anchor="middle">前端处理流式响应</text>
+    <text x="220" y="1811" class="box-sub" text-anchor="middle">handleScoringStreamResponse()</text>
+    <text x="220" y="1829" class="box-sub" text-anchor="middle">解析 data: JSON / [DONE]</text>
+    <text x="220" y="1848" class="box-path" text-anchor="middle">JDGenerator.vue:1398</text>
+  </g>
+
+  <text x="64" y="1930" class="phase">阶段 3：生成完成后自动保存，按 savedScoringId 决定新增还是更新</text>
+
+  <g id="s18">
+    <rect x="75" y="1955" width="290" height="100" rx="10" class="box-user"/>
+    <circle cx="99" cy="1978" r="13" class="step-circle"/><text x="99" y="1982" class="num" text-anchor="middle">17</text>
+    <text x="220" y="1979" class="box-title" text-anchor="middle">生成完成后自动保存</text>
+    <text x="220" y="2001" class="box-sub" text-anchor="middle">scoringCriteria / streamContent</text>
+    <text x="220" y="2019" class="box-sub" text-anchor="middle">saveScoringCriteria()</text>
+    <text x="220" y="2038" class="box-path" text-anchor="middle">JDGenerator.vue:1485</text>
+  </g>
+
+  <g id="d3" transform="translate(600 2005)">
+    <polygon points="0,-66 96,0 0,66 -96,0" fill="#ffffff" stroke="#f59e0b" stroke-width="1.8"/>
+    <text y="-10" class="box-title" text-anchor="middle">saved</text>
+    <text y="10" class="box-title" text-anchor="middle">ScoringId?</text>
+  </g>
+
+  <g id="s19">
+    <rect x="835" y="1880" width="290" height="104" rx="10" class="box-backend"/>
+    <circle cx="859" cy="1903" r="13" class="step-circle"/><text x="859" y="1907" class="num" text-anchor="middle">18A</text>
+    <text x="980" y="1904" class="box-title" text-anchor="middle">新增保存接口</text>
+    <text x="980" y="1926" class="box-sub" text-anchor="middle">save_scoring_criteria()</text>
+    <text x="980" y="1944" class="box-sub" text-anchor="middle">POST /api/v1/scoring-criteria/save</text>
+    <text x="980" y="1963" class="box-path" text-anchor="middle">scoring_criteria.py:28</text>
+  </g>
+
+  <g id="s20">
+    <rect x="835" y="2045" width="290" height="104" rx="10" class="box-backend"/>
+    <circle cx="859" cy="2068" r="13" class="step-circle"/><text x="859" y="2072" class="num" text-anchor="middle">18B</text>
+    <text x="980" y="2069" class="box-title" text-anchor="middle">更新保存接口</text>
+    <text x="980" y="2091" class="box-sub" text-anchor="middle">update_scoring_criteria()</text>
+    <text x="980" y="2109" class="box-sub" text-anchor="middle">PUT /api/v1/scoring-criteria/{id}</text>
+    <text x="980" y="2128" class="box-path" text-anchor="middle">scoring_criteria.py:49</text>
+  </g>
+
+  <g id="s21">
+    <rect x="455" y="1880" width="290" height="104" rx="10" class="box-api"/>
+    <circle cx="479" cy="1903" r="13" class="step-circle"/><text x="479" y="1907" class="num" text-anchor="middle">前端A</text>
+    <text x="600" y="1904" class="box-title" text-anchor="middle">没有 ID：创建</text>
+    <text x="600" y="1926" class="box-sub" text-anchor="middle">createScoringCriteria(scoringData)</text>
+    <text x="600" y="1944" class="box-sub" text-anchor="middle">POST /scoring-criteria/save</text>
+    <text x="600" y="1963" class="box-path" text-anchor="middle">scoringCriteria.js:6</text>
+  </g>
+
+  <g id="s22">
+    <rect x="455" y="2045" width="290" height="104" rx="10" class="box-api"/>
+    <circle cx="479" cy="2068" r="13" class="step-circle"/><text x="479" y="2072" class="num" text-anchor="middle">前端B</text>
+    <text x="600" y="2069" class="box-title" text-anchor="middle">有 ID：更新</text>
+    <text x="600" y="2091" class="box-sub" text-anchor="middle">updateScoringCriteria(id, data)</text>
+    <text x="600" y="2109" class="box-sub" text-anchor="middle">PUT /scoring-criteria/{id}</text>
+    <text x="600" y="2128" class="box-path" text-anchor="middle">scoringCriteria.js:11</text>
+  </g>
+
+  <g id="s23">
+    <rect x="1215" y="1960" width="290" height="116" rx="10" class="box-ext"/>
+    <circle cx="1239" cy="1983" r="13" class="step-circle"/><text x="1239" y="1987" class="num" text-anchor="middle">19</text>
+    <text x="1360" y="1984" class="box-title" text-anchor="middle">服务层调用远程 HR</text>
+    <text x="1360" y="2006" class="box-sub" text-anchor="middle">ScoringCriteriaService</text>
+    <text x="1360" y="2024" class="box-sub" text-anchor="middle">save_scoring_criteria() / update()</text>
+    <text x="1360" y="2042" class="box-sub" text-anchor="middle">remote_service_client.post/put()</text>
+    <text x="1360" y="2061" class="box-path" text-anchor="middle">scoring_criteria_service.py</text>
+  </g>
+
+  <g id="s24">
+    <rect x="75" y="2195" width="290" height="92" rx="10" class="box-user"/>
+    <circle cx="99" cy="2218" r="13" class="step-circle"/><text x="99" y="2222" class="num" text-anchor="middle">20</text>
+    <text x="220" y="2220" class="box-title" text-anchor="middle">前端接收保存结果</text>
+    <text x="220" y="2242" class="box-sub" text-anchor="middle">新增时 savedScoringId=response.id</text>
+    <text x="220" y="2262" class="box-sub" text-anchor="middle">提示保存/更新成功</text>
+  </g>
+
+  <!-- Arrows: phase 1 -->
+  <path d="M 365 291 L 455 291" class="flow"/>
+  <text x="410" y="279" class="arrow-label" text-anchor="middle">获取详情</text>
+  <path d="M 600 337 C 600 360, 220 354, 220 385" class="return-flow"/>
+  <text x="430" y="363" class="arrow-label" text-anchor="middle">返回 JD 数据</text>
+  <path d="M 220 481 L 220 530" class="flow"/>
+  <text x="235" y="512" class="arrow-label">继续加载评分</text>
+  <path d="M 365 578 L 455 578" class="flow"/>
+  <text x="410" y="566" class="arrow-label" text-anchor="middle">按 JD ID</text>
+  <path d="M 745 578 L 835 578" class="flow"/>
+  <text x="790" y="566" class="arrow-label" text-anchor="middle">HTTP GET</text>
+  <path d="M 980 626 L 980 675" class="flow"/>
+  <text x="995" y="657" class="arrow-label">进入服务层</text>
+  <path d="M 1125 723 L 1215 723" class="flow"/>
+  <text x="1170" y="711" class="arrow-label" text-anchor="middle">远程查询</text>
+  <path d="M 1360 771 C 1360 835, 620 815, 312 845" class="return-flow"/>
+  <text x="880" y="826" class="arrow-label" text-anchor="middle">ScoringCriteriaListResponse(items)</text>
+  <path d="M 220 909 L 220 965" class="save-flow"/>
+  <text x="237" y="944" class="arrow-label">是</text>
+  <path d="M 312 845 C 430 850, 528 914, 600 965" class="branch-flow"/>
+  <text x="475" y="903" class="arrow-label" text-anchor="middle">否</text>
+  <path d="M 220 1057 L 220 1150" class="flow"/>
+  <path d="M 600 1057 C 600 1110, 265 1100, 220 1150" class="branch-flow"/>
+
+  <!-- Arrows: generation -->
+  <path d="M 220 1242 L 220 1266" class="flow"/>
+  <path d="M 312 1330 L 455 1330" class="warn-flow"/>
+  <text x="383" y="1318" class="arrow-label" text-anchor="middle">否</text>
+  <path d="M 220 1394 L 220 1445" class="flow"/>
+  <text x="237" y="1427" class="arrow-label">是</text>
+  <path d="M 365 1495 L 455 1495" class="flow"/>
+  <text x="410" y="1483" class="arrow-label" text-anchor="middle">构造请求</text>
+  <path d="M 745 1495 L 835 1495" class="flow"/>
+  <text x="790" y="1483" class="arrow-label" text-anchor="middle">HTTP POST</text>
+  <path d="M 980 1545 L 980 1600" class="flow"/>
+  <text x="995" y="1578" class="arrow-label">query</text>
+  <path d="M 1125 1652 L 1215 1652" class="flow"/>
+  <text x="1170" y="1640" class="arrow-label" text-anchor="middle">调用工作流</text>
+  <path d="M 1360 1704 C 1360 1760, 650 1735, 365 1817" class="return-flow"/>
+  <text x="870" y="1752" class="arrow-label" text-anchor="middle">StreamingResponse: data chunk ... [DONE]</text>
+
+  <!-- Arrows: save -->
+  <path d="M 220 1869 L 220 1955" class="save-flow"/>
+  <text x="237" y="1917" class="arrow-label">生成完成</text>
+  <path d="M 365 2005 L 504 2005" class="save-flow"/>
+  <text x="434" y="1992" class="arrow-label" text-anchor="middle">检查 ID</text>
+  <path d="M 600 1939 L 600 1984" class="save-flow"/>
+  <text x="615" y="1966" class="arrow-label">否</text>
+  <path d="M 600 2071 L 600 2045" class="branch-flow"/>
+  <text x="615" y="2065" class="arrow-label">是</text>
+  <path d="M 745 1932 L 835 1932" class="save-flow"/>
+  <text x="790" y="1920" class="arrow-label" text-anchor="middle">创建</text>
+  <path d="M 745 2097 L 835 2097" class="branch-flow"/>
+  <text x="790" y="2085" class="arrow-label" text-anchor="middle">更新</text>
+  <path d="M 1125 1932 C 1170 1932, 1170 1990, 1215 1990" class="save-flow"/>
+  <text x="1168" y="1942" class="arrow-label" text-anchor="middle">service.save + post</text>
+  <path d="M 1125 2097 C 1170 2097, 1170 2048, 1215 2048" class="branch-flow"/>
+  <text x="1169" y="2114" class="arrow-label" text-anchor="middle">service.update + put</text>
+  <path d="M 1360 2076 C 1360 2170, 570 2158, 365 2241" class="return-flow"/>
+  <text x="840" y="2170" class="arrow-label" text-anchor="middle">返回 ScoringCriteriaResponse，包含 id / content / status</text>
+
+  <!-- Summary notes -->
+  <rect x="40" y="2345" width="1500" height="82" rx="14" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.4"/>
+  <text x="68" y="2372" class="note-title">核心结论</text>
+  <text x="160" y="2372" class="note-text">1. 生成评分标准和保存评分标准是两个接口阶段：生成走 /hr-workflows/generate-scoring-criteria，保存走 /scoring-criteria/save 或 /scoring-criteria/{id}。</text>
+  <text x="160" y="2395" class="note-text">2. 前端先根据 savedJDId 查询历史评分标准，用 items[0].id 设置 savedScoringId；因此后续保存能判断是新增还是更新。</text>
+  <text x="160" y="2418" class="note-text">3. Dify 只负责生成评分标准文本；真实持久化由 ScoringCriteriaService 通过 remote_service_client 调远程 HR 服务完成。</text>
+</svg>

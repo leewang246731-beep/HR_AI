@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HR Agent 执行流程图</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  body {
+    background: #f5f7fa;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    padding: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  h1 { text-align: center; color: #303133; margin-bottom: 30px; }
+  .mermaid { background: #fff; border-radius: 8px; padding: 30px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); margin-bottom: 40px; }
+</style>
+</head>
+<body>
+
+<h1>HR Agent 执行流程</h1>
+
+<h2>总览：从 HTTP 请求到 SSE 响应</h2>
+<div class="mermaid">
+flowchart TD
+    A["📩 POST /api/v1/agent/chat/stream<br/>AgentChatRequest{message, conversation_id, attachments}"]
+    B["🔐 endpoint/agent.py:47<br/>stream_chat_with_agent()"]
+
+    C1["⚡ yield thinking 事件<br/>前端立即展示「正在理解...」"]
+    C2["📎 _normalize_attachments()<br/>提取文件扩展名"]
+    C3["🧠 _build_conversation_memory()<br/>取最近12条/6000字对话历史"]
+
+    D{"有 confirmed_requirements?<br/>(用户已确认过信息)"}
+
+    E1["🗑️ _classify_agent_intent()<br/>规则: 消息含「删除」?"]
+    E2{"是删除意图?"}
+    E3["🤖 _plan_agent_action()<br/>LLM ReAct 决策<br/>chat / use_tool / ask_user"]
+
+    F{"agent_plan.mode ?"}
+
+    G1["💬 chat 分支<br/>普通对话"]
+    G2["🧩 skill 分支<br/>插件调度"]
+    G3["🗑️ resource_delete<br/>删除资源"]
+    G4["🔧 use_tool<br/>业务工具"]
+
+    H1["📝 构建带记忆的 Prompt"]
+    H2["LLM 流式生成"]
+    H3["逐 token → yield delta"]
+
+    H4["_handle_skill_intent()"]
+    H5["_handle_resource_delete()"]
+    H6["调用 chat()<br/>进入工具分流"]
+
+    I["📦 yield plan 事件<br/>AgentChatResponse"]
+    J["📝 流式文本 → yield delta"]
+    K["✅ yield final + [DONE]"]
+
+    A --> B
+    B --> C1
+    C1 --> C2
+    C2 --> C3
+    C3 --> D
+    D -->|否| E1
+    D -->|是| F
+    E1 --> E2
+    E2 -->|是| F
+    E2 -->|否| E3
+    E3 -->|LLM失败| E1
+    E3 -->|成功| F
+
+    F -->|chat/general| G1
+    F -->|intent在skill中| G2
+    F -->|resource_delete| G3
+    F -->|其他工具| G4
+
+    G1 --> H1 --> H2 --> H3 --> I --> J --> K
+    G2 --> H4 --> I --> J --> K
+    G3 --> H5 --> I --> J --> K
+    G4 --> H6 --> I --> J --> K
+
+    style A fill:#e1f0ff
+    style C1 fill:#fff7e6
+    style E3 fill:#f0e6ff
+    style K fill:#e6ffe6
+</div>
+
+<h2>Step 3 详解：ReAct 决策 (_plan_agent_action)</h2>
+<div class="mermaid">
+flowchart TD
+    A["📝 _plan_agent_action(message, attachments, memory)"]
+
+    B["🔨 构建 tool_text<br/>遍历 tool_registry<br/>生成: 意图 + 工具名 + 描述 + 前置条件"]
+
+    C["📋 构建 ReAct Prompt<br/>- 角色: HR Agent 控制器<br/>- 可用工具列表<br/>- 动作空间: chat/use_tool/ask_user<br/>- 6条决策规则<br/>- 历史对话记忆<br/>- 用户消息 + 附件<br/>- 输出格式: JSON"]
+
+    D["🤖 llm_service.generate_response(prompt)"]
+
+    E{"LLM 返回成功?"}
+    F["📤 解析 JSON<br/>{thought, action, intent, confidence, reply}"]
+
+    G{"intent 在允许列表中?"}
+    H["✅ 返回 ReActDecision<br/>{mode, intent, reason, reply, source:'react_llm'}"]
+
+    I["⚠️ 降级: _classify_agent_intent()<br/>关键词+规则兜底"]
+    J["✅ 返回 ReActDecision<br/>{mode, intent, reason, source:'fallback'}"]
+
+    A --> B --> C --> D --> E
+    E -->|是| F --> G
+    E -->|否| I
+    G -->|是| H
+    G -->|否| I
+    I --> J
+
+    style D fill:#f0e6ff
+    style I fill:#fff3e0
+    style H fill:#e6ffe6
+</div>
+
+<h2>Step 4 详解：chat() 工具分流</h2>
+<div class="mermaid">
+flowchart TD
+    A["📩 chat(message, user_id, conversation_id, attachments, confirmed_requirements)"]
+
+    B1["📎 _normalize_attachments()"]
+    B2["🧠 _build_conversation_memory()"]
+
+    C{"有 confirmed_requirements?"}
+    D1["skill_dispatcher.match_confirmation_action()<br/>匹配确认动作"]
+    D2{"匹配到 Skill?"}
+
+    E1["intent = skill.intent<br/>source = confirmed_skill_action"]
+    E2["intent = 'jd'<br/>source = confirmed_requirements"]
+
+    F{"_classify_agent_intent<br/>→ resource_delete?"}
+    G["intent = resource_delete<br/>source = delete_rule"]
+
+    H["_plan_agent_action()<br/>ReAct LLM 决策"]
+    I["_route_for_intent(intent) → route_result"]
+
+    J{"intent / mode ?"}
+
+    K1["💬 general/chat<br/>→ 纯文本回复"]
+    K2["🗑️ resource_delete<br/>→ _handle_resource_delete()"]
+    K3["🧩 skill bundles<br/>→ _handle_skill_intent()"]
+    K4["📄 resume_screening<br/>→ 附件检查 → 结构化响应"]
+    K5["🎯 interview_plan<br/>→ 候选人匹配 → 结构化响应"]
+    K6["📝 exam_generate<br/>→ 文档检查 → 结构化响应"]
+    K7["🏷️ jd (默认)<br/>→ JD生成编排"]
+
+    L["📦 返回 AgentChatResponse"]
+
+    A --> B1 --> B2 --> C
+    C -->|是| D1 --> D2
+    D2 -->|是| E1 --> I
+    D2 -->|否| E2 --> I
+    C -->|否| F
+    F -->|是| G --> I
+    F -->|否| H --> I
+    I --> J
+    J -->|general| K1 --> L
+    J -->|resource_delete| K2 --> L
+    J -->|skill bundle| K3 --> L
+    J -->|resume_screening| K4 --> L
+    J -->|interview_plan| K5 --> L
+    J -->|exam_generate| K6 --> L
+    J -->|jd / 其他| K7 --> L
+
+    style H fill:#f0e6ff
+    style L fill:#e6ffe6
+</div>
+
+<h2>JD 生成完整链路 (_run_recruitment_agent)</h2>
+<div class="mermaid">
+flowchart TD
+    A["🏁 _run_recruitment_agent(message, route, parsed_requirements, user_id)"]
+
+    S1["📋 Step1: 计划步骤<br/>招聘信息已确认，开始执行"]
+    S2["📝 Step2: _parse_requirements()<br/>LLM解析结构化需求"]
+    S3["🤖 Step3: _generate_jd()<br/>LLM生成JD文本"]
+    S4["💾 Step4: _save_job_description()<br/>保存JD到PostgreSQL"]
+    S5["🤖 Step5: _generate_scoring_criteria()<br/>LLM生成评分标准"]
+    S6["💾 Step6: _save_scoring_criteria()<br/>保存评分标准到PostgreSQL"]
+
+    R["📦 返回 AgentChatResponse<br/>artifacts: [JD内容, 评分标准]<br/>suggestions: [筛选简历, 生成面试题, 修改JD]"]
+
+    A --> S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> R
+
+    style S3 fill:#f0e6ff
+    style S5 fill:#f0e6ff
+    style S4 fill:#e8f5e9
+    style S6 fill:#e8f5e9
+    style R fill:#e6ffe6
+</div>
+
+<h2>Skill 多阶段确认流 (以邮件为例)</h2>
+<div class="mermaid">
+flowchart TD
+    U["👤 用户: 「给候选人写面试邀请邮件」"]
+
+    R1["ReAct 决策 → intent=email_notification"]
+    D1["_handle_skill_intent()<br/>bundle.resolve_phase() → 'draft'"]
+
+    P1["📝 执行 draft phase<br/>import email_workflow.py<br/>run_draft_phase(context)"]
+    P1R["返回: requires_confirmation=true<br/>artifacts: [email_draft]"]
+
+    F1["🖥️ 前端渲染邮件草稿<br/>+「确认发送」按钮"]
+    U2["👤 用户点击确认<br/>confirmed_requirements={action:'send_email'}"]
+
+    D2["bundle.resolve_phase() → 'send'<br/>匹配 confirmation_action='send_email'"]
+    P2["📤 执行 send phase<br/>run_send_phase(context)<br/>→ SMTP发送"]
+
+    R2["✅ 返回发送结果"]
+
+    U --> R1 --> D1 --> P1 --> P1R --> F1 --> U2 --> D2 --> P2 --> R2
+
+    style P1 fill:#f0e6ff
+    style P2 fill:#f0e6ff
+    style R2 fill:#e6ffe6
+</div>
+
+<h2>SSE 事件流时序</h2>
+<div class="mermaid">
+sequenceDiagram
+    participant C as 前端 HRAgent.vue
+    participant E as endpoint/agent.py
+    participant A as AgentService
+    participant L as LLM Service
+    participant D as Database
+
+    C->>E: POST /agent/chat/stream
+    E->>A: stream_chat_agent()
+
+    A-->>C: SSE: thinking {"status":"running"}
+    Note over C: 渲染「正在理解...」
+
+    A->>D: 查询 Conversation + Messages
+    D-->>A: 对话历史 (最近12条)
+
+    A->>L: ReAct 决策 Prompt
+    L-->>A: {action:"use_tool", intent:"jd"}
+
+    A-->>C: SSE: plan {"intent":"jd", "steps":[...]}
+    Note over C: 渲染步骤进度条
+
+    A-->>C: SSE: delta "我"
+    A-->>C: SSE: delta "已"
+    A-->>C: SSE: delta "识别"
+    Note over C: 逐字渲染
+
+    A-->>C: SSE: final {"artifacts":[...], "suggestions":[...]}
+    Note over C: 渲染交互组件
+
+    A-->>C: data: [DONE]
+    Note over C: 关闭 SSE
+</div>
+
+</body>
+</html>
