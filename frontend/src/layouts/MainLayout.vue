@@ -80,11 +80,33 @@
         
         <div class="header-right">
           <!-- 通知 -->
-          <el-badge :value="12" class="notification-badge">
-            <el-button type="text" class="header-btn">
-              <el-icon><Bell /></el-icon>
-            </el-button>
-          </el-badge>
+          <el-popover placement="bottom-end" :width="380" trigger="click" @show="fetchNotifications">
+            <template #reference>
+              <el-badge :value="unreadCount" :hidden="unreadCount === 0" class="notification-badge">
+                <el-button type="text" class="header-btn">
+                  <el-icon><Bell /></el-icon>
+                </el-button>
+              </el-badge>
+            </template>
+            <div class="notification-panel">
+              <div class="notification-header">
+                <span>消息通知</span>
+                <span class="notification-count">共 {{ notifications.length }} 条</span>
+              </div>
+              <div class="notification-list" v-if="notifications.length > 0">
+                <div class="notification-item" v-for="item in notifications" :key="item.id" @click="goToActivity(item)">
+                  <div class="notif-content">
+                    <p class="notif-title">{{ item.title }}</p>
+                    <p class="notif-time">{{ formatActivityTime(item.created_at || item.time) }}</p>
+                  </div>
+                  <el-tag size="small" :type="getActivityTagType(item.type || item.icon)">{{ getActivityLabel(item.type || item.icon) }}</el-tag>
+                </div>
+              </div>
+              <div class="notification-empty" v-else>
+                <el-empty description="暂无消息" :image-size="80" />
+              </div>
+            </div>
+          </el-popover>
           
           <!-- 用户菜单 -->
           <el-dropdown @command="handleUserCommand" class="user-dropdown">
@@ -128,11 +150,13 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { ElMessageBox } from 'element-plus'
 import { TrendCharts, Fold, Expand, Bell, User, Setting, SwitchButton } from '@element-plus/icons-vue'
+import Cookies from 'js-cookie'
+import dayjs from 'dayjs'
 
 const route = useRoute()
 const router = useRouter()
@@ -140,6 +164,48 @@ const authStore = useAuthStore()
 
 // 响应式数据
 const sidebarCollapsed = ref(false)
+const notifications = ref([])
+const unreadCount = ref(0)
+
+// 通知相关方法
+const fetchNotifications = async () => {
+  try {
+    const token = Cookies.get('token')
+    const res = await fetch('/api/v1/stats/recent-activities?limit=10', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    const data = await res.json()
+    notifications.value = data.items || []
+    unreadCount.value = data.total || 0
+  } catch (e) {
+    console.error('获取通知失败', e)
+  }
+}
+
+const getActivityLabel = (type) => {
+  const labels = { jd: 'JD生成', resume: '简历评价', scoring: '评分标准', interview: '面试方案', exam: '考试', training: '简历评价', assistant: '智能助手' }
+  return labels[type] || type || '系统消息'
+}
+
+const getActivityTagType = (type) => {
+  const types = { jd: 'primary', resume: 'success', scoring: 'warning', interview: 'danger', exam: 'info', training: 'success', assistant: '' }
+  return types[type] || 'info'
+}
+
+const formatActivityTime = (time) => {
+  if (!time) return ''
+  return dayjs(time).format('MM-DD HH:mm')
+}
+
+const goToActivity = (item) => {
+  const t = item.type || item.icon || ''
+  const routes = { jd: '/recruitment/jd-generator', resume: '/recruitment/resume-screening', scoring: '/recruitment/jd-generator', interview: '/recruitment/smart-interview', exam: '/training/exam-management', training: '/recruitment/resume-screening', assistant: '/assistant/knowledge-assistant' }
+  const path = routes[t]
+  if (path) router.push(path)
+}
+
+// 初始加载
+onMounted(() => fetchNotifications())
 
 // 计算属性
 const user = computed(() => authStore.user)
@@ -478,6 +544,36 @@ watch(route, () => {
       display: none;
     }
   }
+}
+
+// 通知面板样式
+.notification-panel {
+  .notification-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding-bottom: 12px; border-bottom: 1px solid #ebeef5; margin-bottom: 8px;
+    font-weight: 600; font-size: 15px;
+
+    .notification-count { font-size: 12px; color: #909399; font-weight: normal; }
+  }
+
+  .notification-list {
+    max-height: 420px; overflow-y: auto;
+
+    .notification-item {
+      display: flex; align-items: center; gap: 10px; padding: 10px 6px;
+      border-radius: 8px; cursor: pointer; transition: background 0.2s;
+
+      &:hover { background: #f5f7fa; }
+
+      .notif-content {
+        flex: 1; min-width: 0;
+        .notif-title { margin: 0; font-size: 13px; color: #303133; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .notif-time { margin: 3px 0 0; font-size: 11px; color: #c0c4cc; }
+      }
+    }
+  }
+
+  .notification-empty { padding: 15px 0; }
 }
 
 // 过渡动画

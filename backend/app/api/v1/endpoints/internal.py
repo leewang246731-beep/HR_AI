@@ -371,8 +371,89 @@ async def recent_activities_internal(
     db: AsyncSession = Depends(get_db),
     _: None = Depends(verify_api_key)
 ):
-    """内部：最近活动"""
-    return {"activities": [], "total": 0}
+    """内部：最近活动（跨5张业务表UNION查询）"""
+    try:
+        sql = """
+        SELECT * FROM (
+            SELECT id::text, COALESCE(title, position_title, '未命名JD') as title, 'jd' as type, created_at FROM jd_records WHERE is_active = true
+            UNION ALL
+            SELECT id::text, COALESCE(candidate_name, '简历评价') as title, 'resume' as type, created_at FROM resume_evaluations WHERE is_active = true
+            UNION ALL
+            SELECT id::text, COALESCE(title, '评分标准') as title, 'scoring' as type, created_at FROM scoring_criteria WHERE is_active = true
+            UNION ALL
+            SELECT id::text, COALESCE(title, '面试方案') as title, 'interview' as type, created_at FROM interview_plans WHERE is_active = true
+            UNION ALL
+            SELECT id::text, COALESCE(exam_name, '考试结果') as title, 'exam' as type, created_at FROM exam_results WHERE is_active = true
+        ) AS activities
+        ORDER BY created_at DESC
+        LIMIT :limit OFFSET :offset
+        """
+        result = await db.execute(__import__('sqlalchemy').text(sql), {"limit": limit, "offset": offset})
+        rows = result.fetchall()
+        items = []
+        for row in rows:
+            item = {"id": str(row[0]), "title": row[1], "type": row[2], "created_at": str(row[3]) if row[3] else None}
+            items.append(item)
+        return {"items": items, "total": len(items) + offset, "page": offset // limit + 1 if limit else 1, "size": limit}
+    except Exception as e:
+        logger.error(f"获取活动列表失败: {e}")
+        return {"items": [], "total": 0, "page": 1, "size": limit}
+
+
+@router.get("/jd-stats/jd-recent-activities")
+async def jd_recent_activities_internal(
+    current_user_id: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(verify_api_key)
+):
+    """内部：活动记录（兼容StatsService，跨5张业务表UNION）"""
+    try:
+        sql = """
+        SELECT * FROM (
+            SELECT id::text as id, COALESCE(title, position_title, '未命名JD') as title, 'jd' as type, created_at FROM jd_records WHERE is_active = true
+            UNION ALL
+            SELECT id::text, COALESCE(title, '评分标准') as title, 'scoring' as type, created_at FROM scoring_criteria WHERE is_active = true
+            UNION ALL
+            SELECT id::text, COALESCE(title, '面试方案') as title, 'interview' as type, created_at FROM interview_plans WHERE is_active = true
+            UNION ALL
+            SELECT id::text, COALESCE(candidate_name, '简历评价') as title, 'resume' as type, created_at FROM resume_evaluations WHERE is_active = true
+            UNION ALL
+            SELECT id::text, COALESCE(exam_name, '考试结果') as title, 'exam' as type, created_at FROM exam_results WHERE is_active = true
+        ) AS activities
+        ORDER BY created_at DESC LIMIT 20
+        """
+        result = await db.execute(__import__('sqlalchemy').text(sql))
+        rows = result.fetchall()
+        return [{"id": str(r[0]), "title": r[1], "type": r[2], "created_at": str(r[3]) if r[3] else None} for r in rows]
+    except Exception as e:
+        logger.error(f"获取活动列表失败: {e}")
+        return []
+
+
+@router.get("/jd-stats/jd_dashboard")
+async def jd_dashboard_internal(
+    current_user_id: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(verify_api_key)
+):
+    """内部：JD仪表板统计"""
+    try:
+        result = await db.execute(__import__('sqlalchemy').text("SELECT COUNT(*) FROM jd_records WHERE is_active = true"))
+        total = result.scalar()
+        return {"total": total, "change": 0}
+    except Exception:
+        return {"total": 0, "change": 0}
+
+
+@router.get("/jd-stats/jd-recruitment-trend")
+async def jd_recruitment_trend_internal(
+    days: int = Query(30),
+    current_user_id: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(verify_api_key)
+):
+    """内部：招聘趋势"""
+    return {"data": []}
 
 
 # ===== 面试方案管理 =====
