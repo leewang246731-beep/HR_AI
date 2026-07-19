@@ -12,20 +12,30 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 
+def _get_system_token() -> str:
+    """为内部服务调用生成系统JWT令牌"""
+    from datetime import datetime, timedelta, timezone
+    from jose import jwt as jose_jwt
+    expire = datetime.now(timezone.utc) + timedelta(minutes=5)
+    payload = {"sub": "system", "exp": expire, "type": "internal"}
+    return jose_jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
+
+
 class RemoteServiceClient:
     """远程服务HTTP客户端工具类"""
 
     def __init__(self):
-        self.base_url = f"http://{settings.HR_SERVICE_HOST}:{settings.HR_SERVICE_PORT}/api/v1"
+        self.base_url = f"http://{settings.HR_SERVICE_HOST}:{settings.HR_SERVICE_PORT}/api/v1/internal"
         self.api_key = settings.HR_SERVICE_APIKEY
         self.timeout = 30.0
         self.log_enabled = settings.REMOTE_SERVICE_LOG_ENABLED
 
     def _get_headers(self) -> Dict[str, str]:
-        """获取默认请求头"""
+        """获取默认请求头，包含系统JWT令牌用于内部认证"""
         return {
             "Content-Type": "application/json",
-            "X-API-Key": self.api_key
+            "X-API-Key": self.api_key,
+            "Authorization": f"Bearer {_get_system_token()}"
         }
 
     def _get_params(self, user_id: UUID, **kwargs) -> Dict[str, Any]:

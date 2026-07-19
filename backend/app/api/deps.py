@@ -23,18 +23,17 @@ async def get_current_user(
 ) -> User:
     """
     获取当前认证用户
+    支持 Bearer token (用户) 和 X-API-Key header (内部服务调用)
     """
     import logging
     logger = logging.getLogger(__name__)
-    
-    logger.info("🔍 调用get_current_user")
-    
+
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    
+
     try:
         logger.info(f"🔑 正在解码令牌: {token[:20]}...")
         payload = jwt.decode(
@@ -45,30 +44,47 @@ async def get_current_user(
         if user_id is None:
             logger.error("❌ 令牌载荷中没有user_id")
             raise credentials_exception
+        # 内部服务调用：返回系统用户（跳过数据库查询）
+        if user_id == "system":
+            from app.models.user import UserRole
+            from uuid import uuid4
+            sys_user = User(
+                id=uuid4(),
+                username="system",
+                email="system@internal",
+                full_name="System Service",
+                hashed_password="",
+                role=UserRole.ADMIN,
+                is_superuser=True,
+                is_verified=True,
+                is_active=True,
+            )
+            logger.info("✅ 系统服务认证通过")
+            return sys_user
     except JWTError as e:
         logger.error(f"❌ JWT decode error: {e}")
         raise credentials_exception
-    
+
     try:
         from uuid import UUID
         user_service = UserService(db)
         logger.info(f"🔍 正在查找用户ID: {user_id}")
         user_uuid = UUID(user_id)
         user = await user_service.get_user(user_uuid)
-        
+
         if user is None:
             logger.error(f"❌ 未找到用户ID: {user_id}")
             raise credentials_exception
-        
+
         logger.info(f"✅ 找到用户: {user.username}, 活跃状态: {user.is_active}")
-        
+
         if not user.is_active:
             logger.error(f"❌ 用户 {user.username} 处于非活跃状态")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Inactive user"
             )
-        
+
         logger.info(f"✅ 返回用户: {user.username}")
         return user
     except Exception as e:

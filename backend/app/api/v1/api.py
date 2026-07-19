@@ -3,9 +3,12 @@ v1端点的主API路由
 """
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import auth, users, conversations, documents, knowledge_base, chat, knowledge_assistant, stats, hr_workflows, scoring_criteria, job_description, resume_evaluation, interview_plan, email_configs, exam_management, intent_router, agent
+from app.api.v1.endpoints import auth, users, conversations, documents, knowledge_base, chat, knowledge_assistant, stats, hr_workflows, scoring_criteria, job_description, resume_evaluation, interview_plan, email_configs, exam_management, intent_router, agent, internal
 
 api_router = APIRouter()
+
+# 内部服务端点（X-API-Key认证，必须最先注册以避免冲突）
+api_router.include_router(internal.router, prefix="/internal", tags=["internal"])
 
 # 包含所有端点路由
 api_router.include_router(auth.router, prefix="/auth", tags=["authentication"])
